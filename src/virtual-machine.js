@@ -20,6 +20,7 @@ const StageLayering = require('./engine/stage-layering');
 const Sprite = require('./sprites/sprite');
 const Blocks = require('./engine/blocks');
 const formatMessage = require('format-message');
+const VersionControl = require('./util/version-control');
 
 const Variable = require('./engine/variable');
 const newBlockIds = require('./util/new-block-ids');
@@ -242,7 +243,7 @@ class VirtualMachine extends EventEmitter {
         this.addListener('workspaceUpdate', () => {
             this.extensionManager.refreshDynamicCategorys();
         });
-        
+
         /**
          * Export some internal classes for extensions.
          */
@@ -261,6 +262,8 @@ class VirtualMachine extends EventEmitter {
             Thread: require('./engine/thread.js'),
             execute: require('./engine/execute.js')
         };
+
+        this.versionControl = new VersionControl(this);
     }
 
     /**
@@ -471,7 +474,7 @@ class VirtualMachine extends EventEmitter {
                     const decoder = new TextDecoder('UTF-8');
                     input = decoder.decode(input);
                 }
-                if (typeof input === 'string') 
+                if (typeof input === 'string')
                     input = JSON.parse(input);
                 // generic objects return [object Object] on stringify
                 if (input.toString() === '[object Object]') {
@@ -771,7 +774,7 @@ class VirtualMachine extends EventEmitter {
         return this._loadExtensions(extensions.extensionIDs, extensions.extensionURLs).then(() => {
             for (const extension of extensions.extensionIDs) {
                 if (`ext_${extension}` in this.runtime) {
-                    if ((typeof this.runtime[`ext_${extension}`].deserialize === 'function') && 
+                    if ((typeof this.runtime[`ext_${extension}`].deserialize === 'function') &&
                         extensions.extensionData[extension]) {
                         this.runtime[`ext_${extension}`].deserialize(extensions.extensionData[extension]);
                     }
