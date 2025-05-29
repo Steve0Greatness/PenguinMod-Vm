@@ -263,6 +263,10 @@ class VirtualMachine extends EventEmitter {
             execute: require('./engine/execute.js')
         };
 
+        this.versionControl = null;
+    }
+
+    enableVersionControl() {
         this.versionControl = new VersionControl(this);
     }
 
@@ -538,7 +542,9 @@ class VirtualMachine extends EventEmitter {
         // Put everything in a zip file
         zip.file('project.json', projectJson);
         this._addFileDescsToZip(this.serializeAssets(), zip);
-        this._addFileDescsToZip([this.versionControl.serialize()], zip);
+        if (this.versionControl) {
+            this._addFileDescsToZip([this.versionControl.serialize()], zip);
+        }
 
         // Use a fixed modification date for the files in the zip instead of letting JSZip use the
         // current time to avoid a very small metadata leak and make zipping deterministic. The magic
