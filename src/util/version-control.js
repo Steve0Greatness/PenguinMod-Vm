@@ -1,6 +1,6 @@
 const JSZip = require('jszip');
 const sb3 = require('../serialization/sb3');
-const { createTwoFilesPatch } = require('diff');
+const { createTwoFilesPatch, applyPatch } = require('diff');
 const sha256 = require('js-sha256');
 const fflate = require('fflate');
 
@@ -34,8 +34,77 @@ class VersionControl {
         this._encoder = new TextEncoder();
     }
 
+    createBranch(branch, from=null) {
+        if (this.commits.size == 0)
+            return false;
+        if (from == null)
+            from = this.branches.get(this.current_branch);
+        this.branches.set(branch, from);
+        return true;
+    }
+
+    switchBranch(branch) {
+        if (!this.branches.has(branch)) {
+            return false;
+        }
+        this.diffing_codebase = this.construct_to_commit(this.branches.get(branch));
+        this.current_branch = branch;
+        return true;
+    }
+
+    construct_to_commit(commit_id) {
+        const commits = [];
+        var commit = this.commits.get(commit_id);
+        var lonely = commit.previous == null;
+
+        if (!commit) return null; // Commit doesn't exist
+
+        do {
+            commits.push(commit.files);
+            if (commit.previous != null)
+                commit = this.commits.get(commit.previous)
+        } while (commit.previous != null)
+        if (!lonely) {
+            commits.push(commit.files);
+        }
+
+        commits.reverse();
+
+        var files = new Map([
+            ["project.json", ""]
+        ]);
+
+        for (let commit of commits) {
+            for (let file in commit) {
+                if (file === this._removed_name) continue;
+                var content = commit[file];
+                if (file === "project.json") {
+                    let current = files.get("project.json");
+                    console.log(current);
+                    files.set("project.json",
+                        Array.from(
+                            this._encoder.encode(
+                                applyPatch(
+                                    current, // files.get("project.json")
+                                    this._decoder.decode(content)
+                                )
+                            )
+                        )
+                    );
+                }
+                files.set(file, content);
+            }
+            var removed = commit[this._removed_name];
+            console.log(removed);
+            for (let file of removed) {
+                files.delete(file);
+            }
+        }
+
+        return Object.fromEntries(files.entries());
+    }
+
     addCommit(log, author) {
-        // TODO
         const project_json = JSON.stringify(
             sb3.serialize(this.vm.runtime),
             (_key, value) => {
@@ -53,7 +122,7 @@ class VersionControl {
         };
 
         for (let asset of this.vm.serializeAssets()) {
-            files[asset.fileName] = asset.fileContent;
+            files[asset.fileName] = Array.from(asset.fileContent);
         }
 
         const diff = {
@@ -62,15 +131,15 @@ class VersionControl {
 
         for (let file in files) {
             // Only add different files.
-            if (file == "project.json" && this.diffing_codebase["project.json"] !== files[file]) {
-                diff["project.json"] = new TextEncoder().encode(createTwoFilesPatch(
+            if (file == "project.json" && sha256(this.diffing_codebase["project.json"] ?? "") !== sha256(files[file])) {
+                diff["project.json"] = this._encoder.encode(createTwoFilesPatch(
                     "a", "b",
                     this.diffing_codebase["project.json"] ?? "",
                     files[file]
                 ));
                 continue;
             }
-            if (file in this.diffing_codebase && this.diffing_codebase[file] == files[file]) continue;
+            if (file in this.diffing_codebase && sha256(this.diffing_codebase[file] ?? "") == sha256(files[file])) continue;
             diff[file] = files[file];
         }
 
@@ -98,9 +167,7 @@ class VersionControl {
             date: Date.now(),
             previous, log, author
         };
-        const commit_id = sha256.create()
-            .update(JSON.stringify(commit_object))
-            .hex();
+        const commit_id = sha256.hex(JSON.stringify(commit_object));
 
         this.commits.set(commit_id, commit_object);
         this.branches.set(this.current_branch, commit_id);
@@ -121,8 +188,6 @@ class VersionControl {
                         type: "Map",
                         value: Array.from(value.entries()),
                     };
-                } else if (value instanceof Uint8Array) {
-                    return this._decoder.decode(value);
                 }
                 return value;
             })
@@ -134,7 +199,12 @@ class VersionControl {
     }
 
     deserialize(contents) {
-        // TODO
+        JSON.parse(fflate.decompressSync(contents), (_, value) => {
+            if (value.type === "Map") {
+                return new Map(value.value);
+            }
+            return value;
+        })
     }
 
 }
