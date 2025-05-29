@@ -80,22 +80,17 @@ class VersionControl {
                 var content = commit[file];
                 if (file === "project.json") {
                     let current = files.get("project.json");
-                    console.log(current);
-                    files.set("project.json",
-                        Array.from(
-                            this._encoder.encode(
-                                applyPatch(
-                                    current, // files.get("project.json")
-                                    this._decoder.decode(content)
-                                )
-                            )
-                        )
+                    let application = applyPatch(
+                        current, // files.get("project.json")
+                        this._decoder.decode(content)
                     );
+                    files.set("project.json", application);
+                    continue;
                 }
                 files.set(file, content);
+
             }
             var removed = commit[this._removed_name];
-            console.log(removed);
             for (let file of removed) {
                 files.delete(file);
             }
@@ -131,15 +126,24 @@ class VersionControl {
 
         for (let file in files) {
             // Only add different files.
-            if (file == "project.json" && sha256(this.diffing_codebase["project.json"] ?? "") !== sha256(files[file])) {
-                diff["project.json"] = this._encoder.encode(createTwoFilesPatch(
+            let project_json = file === "project.json";
+            let content_matches = (file in this.diffing_codebase) && // exists
+                (sha256(this.diffing_codebase[file] ?? "") == sha256(files[file])); // content matches
+
+            if (project_json && !content_matches) {
+                const projectjson = createTwoFilesPatch(
                     "a", "b",
                     this.diffing_codebase["project.json"] ?? "",
                     files[file]
-                ));
+                );
+                diff["project.json"] = this._encoder.encode(projectjson);
                 continue;
             }
-            if (file in this.diffing_codebase && sha256(this.diffing_codebase[file] ?? "") == sha256(files[file])) continue;
+
+            if (project_json || content_matches) {
+                continue;
+            }
+
             diff[file] = files[file];
         }
 
@@ -163,7 +167,7 @@ class VersionControl {
         }
 
         const commit_object = {
-            files: diff,
+            "files": diff,
             date: Date.now(),
             previous, log, author
         };
