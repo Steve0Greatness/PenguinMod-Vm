@@ -203,14 +203,24 @@ class VersionControl {
     }
 
     deserialize(contents) {
-        JSON.parse(fflate.decompressSync(contents), (_, value) => {
-            if (value.type === "Map") {
-                return new Map(value.value);
+        const serialized = JSON.parse(
+            fflate.decompressSync(contents),
+            (_, value) => {
+                if (value.type === "Map") {
+                    return new Map(value.value);
+                }
+                return value;
             }
-            return value;
-        })
-    }
+        );
 
+        this.commits = serialized.commits;
+        this.branches = serialized.branches;
+        this.current_branch = serialized.current;
+
+        this.diffing_codebase = this.commits.size
+            ? this.construct_to_commit(this.branches.get(this.current_branch))
+            : {};
+    }
 }
 
 module.exports = VersionControl
