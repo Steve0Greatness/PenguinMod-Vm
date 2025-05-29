@@ -204,7 +204,7 @@ class VersionControl {
 
     deserialize(contents) {
         const serialized = JSON.parse(
-            fflate.decompressSync(contents),
+            fflate.decompressSync(fflate.strToU8(contents)),
             (_, value) => {
                 if (value.type === "Map") {
                     return new Map(value.value);

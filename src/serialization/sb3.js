@@ -136,7 +136,7 @@ const ExtensionPatches = {
         let blocks = object.blocks;
         const blockIDs = Object.keys(blocks);
         const patcher = extensions.patcher;
-        
+
         for (let block, idx = 0; idx < blockIDs.length; idx++) {
             block = blocks[blockIDs[idx]];
             if (typeof block !== 'object' || Array.isArray(block)) continue;
@@ -145,7 +145,7 @@ const ExtensionPatches = {
                 block.opcode = uniteReplacments[block.opcode];
                 if (block.opcode === 'sensing_regextest' || block.opcode === 'operator_regexmatch') {
                     block.inputs.regrule = [
-                        INPUT_SAME_BLOCK_SHADOW, 
+                        INPUT_SAME_BLOCK_SHADOW,
                         [TEXT_PRIMITIVE, "g"]
                     ];
                 }
@@ -158,7 +158,7 @@ const ExtensionPatches = {
                 }
                 blocks = Object.assign(blocks, Clone.simple(replacersPatch.blocks));
                 object.variables = Object.assign(object.variables, Clone.simple(replacersPatch.variables));
-                const repBlock = block.opcode === 'jwUnite_setReplacer' 
+                const repBlock = block.opcode === 'jwUnite_setReplacer'
                     ? "setReplacerToDisplay"
                     : "replaceWithReplacersDisplay";
                 const replacment = Clone.simple(replacersPatch.blocks[repBlock]);
@@ -554,16 +554,16 @@ const serializeCostume = function (costume) {
 
     obj.bitmapResolution = costumeToSerialize.bitmapResolution;
     obj.dataFormat = costumeToSerialize.dataFormat.toLowerCase();
-    
+
     obj.assetId = costumeToSerialize.assetId;
-    
+
     // serialize this property with the name 'md5ext' because that's
     // what it's actually referring to. TODO runtime objects need to be
     // updated to actually refer to this as 'md5ext' instead of 'md5'
     // but that change should be made carefully since it is very
     // pervasive
     obj.md5ext = costumeToSerialize.md5;
-    
+
     obj.rotationCenterX = costumeToSerialize.rotationCenterX;
     obj.rotationCenterY = costumeToSerialize.rotationCenterY;
 
@@ -578,7 +578,7 @@ const serializeCostume = function (costume) {
 const serializeSound = function (sound) {
     const obj = Object.create(null);
     obj.name = sound.name;
-    
+
     const soundToSerialize = sound.broken || sound;
 
     obj.assetId = soundToSerialize.assetId;
@@ -872,7 +872,7 @@ const serialize = function (runtime, targetId, {allowOptimization = true} = {}) 
     meta.agent = '';
     // TW: Never include full user agent to slightly improve user privacy
     // if (typeof navigator !== 'undefined') meta.agent = navigator.userAgent;
-    
+
     // Attach platform information so TurboWarp and other mods can detect where the file comes from
     const platform = Object.create(null);
     platform.name = "PenguinMod";
@@ -1598,6 +1598,13 @@ const deserialize = function (json, runtime, zip, isSingleSprite) {
         runtime.origin = json.meta.origin;
     } else {
         runtime.origin = null;
+    }
+
+    if (zip.file("VERSIONING.ignore")) {
+        runtime.vm.enableVersionControl();
+        zip.file("VERSIONING.ignore").async("string").then(contents => {
+            runtime.vm.versionControl.deserialize(contents)
+        });
     }
 
     // Extract custom extension IDs, if they exist.
