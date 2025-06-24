@@ -478,7 +478,7 @@ class Blocks {
 
             // TEST LOG
             console.log(e, editingTarget, editingTarget.isStage);
-                
+
             if (e.isLocal && editingTarget && !editingTarget.isStage && !e.isCloud) {
                 if (!editingTarget.lookupVariableById(e.varId)) {
                     editingTarget.createVariable(e.varId, e.varName, e.varType);
@@ -762,10 +762,9 @@ class Blocks {
             } else if (block.opcode === 'data_listcontents') {
                 isSpriteLocalVariable = !(this.runtime.getTargetForStage().variables[block.fields.LIST.id]);
             } else {
-                isSpriteLocalVariable = Object.values(block.fields).some(field => {
-                    if (field.variableType === undefined) return false;
-                    else return ("id" in field) && !(this.runtime.getTargetForStage().variables[field.id]);
-                });
+                isSpriteLocalVariable = Object.values(block.fields).some(field =>
+                    !field.variableType && !this.runtime.getTargetForStage().variables[field?.id]
+                );
             }
 
             // Provides an API for extensions to set reporters of themselves (that can be monitored)
