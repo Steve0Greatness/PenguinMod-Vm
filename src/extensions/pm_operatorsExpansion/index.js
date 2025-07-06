@@ -1050,7 +1050,7 @@ class pmOperatorsExpansion {
     }
     isEven(args) {
         const num = Cast.toNumber(args.NUM);
-        return num % 2 == 0;
+        return num & 1 == 0;
     }
 
     evaluateMath(args) {
