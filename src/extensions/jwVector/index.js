@@ -118,8 +118,8 @@ class Extension {
     constructor() {
         vm.jwVector = Vector
         vm.runtime.registerSerializer(
-            "jwVector", 
-            v => [v.x, v.y], 
+            "jwVector",
+            v => [v.x, v.y],
             v => new Vector.Type(v[0], v[1])
         );
     }
@@ -197,8 +197,10 @@ class Extension {
                     },
                     ...Vector.Block
                 },
+                "---",
                 {
                     opcode: 'multiplyA',
+                    func: 'scalarProduct',
                     text: '[X] * [Y]',
                     arguments: {
                         X: Vector.Argument,
@@ -210,8 +212,23 @@ class Extension {
                     ...Vector.Block
                 },
                 {
+                    opcode: 'divideA',
+                    func: 'scalarQuotient',
+                    text: '[X] / [Y]',
+                    arguments: {
+                        X: Vector.Argument,
+                        Y: {
+                            type: ArgumentType.NUMBER,
+                            defaultValue: 1
+                        }
+                    },
+                    ...Vector.Block
+                },
+
+                {
                     opcode: 'multiplyB',
-                    text: '[X] * [Y]',
+                    func: 'hadamardProduct',
+                    text: '[X] \u{2299} [Y]',
                     arguments: {
                         X: Vector.Argument,
                         Y: Vector.Argument
@@ -219,20 +236,20 @@ class Extension {
                     ...Vector.Block
                 },
                 {
-                    opcode: 'divideA',
-                    text: '[X] / [Y]',
+                    opcode: 'divideB',
+                    func: 'hadamardQuotient',
+                    text: '[X] \u{2298} [Y]',
                     arguments: {
                         X: Vector.Argument,
-                        Y: {
-                            type: ArgumentType.NUMBER,
-                            defaultValue: 1
-                        }
+                        Y: Vector.Argument
                     },
                     ...Vector.Block
                 },
+
                 {
-                    opcode: 'divideB',
-                    text: '[X] / [Y]',
+                    opcode: 'dotProduct',
+                    func: 'dotProduct',
+                    text: '[X] \u{22C5} [Y]',
                     arguments: {
                         X: Vector.Argument,
                         Y: Vector.Argument
@@ -392,32 +409,38 @@ class Extension {
         return new VectorType(X.x - Y.x, X.y - Y.y)
     }
 
-    multiplyA(args) {
+    scalarProduct(args) {
         const X = VectorType.toVector(args.X)
         const Y = Cast.toNumber(args.Y)
 
         return new VectorType(X.x * Y, X.y * Y)
     }
-
-    multiplyB(args) {
-        const X = VectorType.toVector(args.X)
-        const Y = VectorType.toVector(args.Y)
-
-        return new VectorType(X.x * Y.x, X.y * Y.y)
-    }
-
-    divideA(args) {
+    scalarQuotient(args) {
         const X = VectorType.toVector(args.X)
         const Y = Cast.toNumber(args.Y)
 
         return new VectorType(X.x / Y, X.y / Y)
     }
 
-    divideB(args) {
+    hadamardProduct(args) {
+        const X = VectorType.toVector(args.X)
+        const Y = VectorType.toVector(args.Y)
+
+        return new VectorType(X.x * Y.x, X.y * Y.y)
+    }
+
+    hadamardQuotient(args) {
         const X = VectorType.toVector(args.X)
         const Y = VectorType.toVector(args.Y)
 
         return new VectorType(X.x / Y.x, X.y / Y.y)
+    }
+
+    dotProduct(args) {
+        const X = VectorType.toVector(args.X)
+        const Y = VectorType.toVector(args.Y)
+
+        return X.x * Y.x + X.y * Y.y;
     }
 
     magnitude(args) {
@@ -465,7 +488,7 @@ class Extension {
 
         return new VectorType(Math.round(v.x), Math.round(v.y))
     }
-    
+
     getPos({}, util) {
         return new Vector.Type(
             util.target.x,
